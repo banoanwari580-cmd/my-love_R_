@@ -32,7 +32,7 @@ jobs:
           java-version: 17
 
       - name: Install Node Dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --legacy-peer-deps --no-audit --no-fund
 
       - name: Build Web Production Bundle
         run: npm run build
