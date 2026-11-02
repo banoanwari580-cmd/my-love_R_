@@ -1,0 +1,6 @@
+{
+  "name": "My Love Razma ❤️",
+  "description": "اپلیکیشن عاشقانه، خصوصی، لوکس و اختصاصی دو نفره با ۳۰ مرحله عاشقانه، ۶ بازی دونفره، چت اختصاصی، استوری ۱۲ ساعته، آلبوم خاطرات و پخش‌کننده موسیقی.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

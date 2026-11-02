@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Authorized partner profile (Admin or Razma)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "razma"] },
+        "avatar": { "type": "string" },
+        "coverImage": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "bio": { "type": "string" },
+        "heartScore": { "type": "number" },
+        "lastActive": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "email"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Facebook-style dashboard romantic post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string", "enum": ["admin", "razma"] },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["image", "video"] },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "reactions": { "type": "array" },
+        "comments": { "type": "array" }
+      },
+      "required": ["id", "authorId", "content", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Private bidirectional love message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string", "enum": ["admin", "razma"] },
+        "receiverId": { "type": "string", "enum": ["admin", "razma"] },
+        "text": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "audioUrl": { "type": "string" },
+        "audioDuration": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "readAt": { "type": "string" },
+        "reaction": { "type": "string" }
+      },
+      "required": ["id", "senderId", "receiverId", "createdAt"]
+    },
+    "Story": {
+      "title": "Story",
+      "description": "12-hour disappearing romantic story",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string", "enum": ["admin", "razma"] },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["image", "video"] },
+        "caption": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "expiresAt": { "type": "string" },
+        "heartsCount": { "type": "number" },
+        "likedBy": { "type": "array" },
+        "viewers": { "type": "array" }
+      },
+      "required": ["id", "authorId", "mediaUrl", "createdAt", "expiresAt"]
+    },
+    "Memory": {
+      "title": "Memory",
+      "description": "Persistent shared memory album item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "date": { "type": "string" },
+        "location": { "type": "string" },
+        "category": { "type": "string" },
+        "authorId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "imageUrl", "date"]
+    },
+    "LoveLetter": {
+      "title": "LoveLetter",
+      "description": "Wax sealed romantic letter",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "paperTheme": { "type": "string" },
+        "isSealed": { "type": "boolean" },
+        "openedAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "senderId", "receiverId", "title", "content"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Partner profile documents"
+    },
+    "/posts/{postId}": {
+      "schema": "Post",
+      "description": "Facebook-style romantic dashboard posts"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Private chat messages"
+    },
+    "/stories/{storyId}": {
+      "schema": "Story",
+      "description": "12-hour stories"
+    },
+    "/memories/{memoryId}": {
+      "schema": "Memory",
+      "description": "Shared photo and video gallery"
+    },
+    "/loveLetters/{letterId}": {
+      "schema": "LoveLetter",
+      "description": "Sealed love letters"
+    }
+  }
+}

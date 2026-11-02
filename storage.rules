@@ -1,0 +1,52 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Default Deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Helper: Valid authenticated partner check
+    function isPartner() {
+      return request.auth != null && 
+        (request.auth.token.email in ['admin@myloverazma.com', 'razma@myloverazma.com'] ||
+         request.auth.uid in ['admin_uid', 'razma_uid']);
+    }
+
+    // Chat Attachments: Photos and Audio Notes
+    match /chat/{fileName} {
+      allow read: if isPartner();
+      allow write: if isPartner() 
+        && request.resource.size < 20 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('audio/.*'));
+      allow delete: if isPartner();
+    }
+
+    // Stories: Photos and Short Videos
+    match /stories/{fileName} {
+      allow read: if isPartner();
+      allow write: if isPartner() 
+        && request.resource.size < 50 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+      allow delete: if isPartner();
+    }
+
+    // Memories Gallery Photos & Videos
+    match /memories/{fileName} {
+      allow read: if isPartner();
+      allow write: if isPartner() 
+        && request.resource.size < 50 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+      allow delete: if isPartner();
+    }
+
+    // Profile Avatars & Covers
+    match /profiles/{fileName} {
+      allow read: if isPartner();
+      allow write: if isPartner() 
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

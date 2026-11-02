@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny Catch-All
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper: Valid authenticated partner check (strictly 2 accounts)
+    function isPartner() {
+      return request.auth != null && 
+        (request.auth.token.email in ['hamid@gmail.com', 'razma@gmail.com', 'admin@myloverazma.com', 'razma@myloverazma.com', 'banoanwari580@gmail.com'] ||
+         request.auth.uid in ['admin_uid', 'razma_uid']);
+    }
+
+    // Helper: Admin role
+    function isAdmin() {
+      return request.auth != null && 
+        (request.auth.token.email in ['hamid@gmail.com', 'admin@myloverazma.com', 'banoanwari580@gmail.com'] || request.auth.uid == 'admin_uid');
+    }
+
+    // Users Collection: Only 2 authorized documents can exist or be updated
+    match /users/{userId} {
+      allow read: if isPartner();
+      allow create: if isPartner() && (userId == 'admin' || userId == 'razma');
+      allow update: if isPartner() && (userId == 'admin' || userId == 'razma');
+      allow delete: if isAdmin();
+    }
+
+    // Posts Collection: Facebook-style feed posts, comments, and reactions
+    match /posts/{postId} {
+      allow read: if isPartner();
+      allow create: if isPartner() && (request.resource.data.authorId in ['admin', 'razma']);
+      allow update: if isPartner();
+      allow delete: if isPartner();
+    }
+
+    // Messages Collection: Bidirectional private chat between the 2 partners
+    match /messages/{messageId} {
+      allow read: if isPartner();
+      allow create: if isPartner() && (request.resource.data.senderId in ['admin', 'razma']);
+      allow update: if isPartner();
+      allow delete: if isPartner();
+    }
+
+    // Stories Collection: 12-hour stories with viewer lists and hearts
+    match /stories/{storyId} {
+      allow read: if isPartner();
+      allow create: if isPartner() && (request.resource.data.authorId in ['admin', 'razma']);
+      allow update: if isPartner();
+      allow delete: if isPartner();
+    }
+
+    // Memories Gallery Collection
+    match /memories/{memoryId} {
+      allow read: if isPartner();
+      allow create: if isPartner() && (request.resource.data.authorId in ['admin', 'razma']);
+      allow update: if isPartner();
+      allow delete: if isPartner();
+    }
+
+    // Love Letters Collection
+    match /loveLetters/{letterId} {
+      allow read: if isPartner();
+      allow create: if isPartner() && (request.resource.data.senderId in ['admin', 'razma']);
+      allow update: if isPartner();
+      allow delete: if isPartner();
+    }
+
+    // Stages Progression Collection
+    match /loveStages/{stageId} {
+      allow read: if isPartner();
+      allow write: if isPartner();
+    }
+
+    // Games Scores Collection
+    match /games/{scoreId} {
+      allow read: if isPartner();
+      allow create: if isPartner() && (request.resource.data.userId in ['admin', 'razma']);
+      allow update: if isPartner();
+      allow delete: if isAdmin();
+    }
+
+    // Rewards & Badges Collection
+    match /rewards/{rewardId} {
+      allow read: if isPartner();
+      allow write: if isPartner();
+    }
+
+    // Relationship Settings Document
+    match /settings/{settingId} {
+      allow read: if isPartner();
+      allow write: if isPartner();
+    }
+  }
+}
