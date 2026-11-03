@@ -402,6 +402,99 @@ export const MemoriesView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Memory Modal */}
+      {editingMemory && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#240a36] border border-rose-500/30 rounded-3xl p-5 w-full max-w-sm space-y-3.5 shadow-2xl animate-fade-in text-right">
+            <div className="flex items-center justify-between border-b border-rose-500/20 pb-3">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-amber-400" />
+                <h3 className="text-sm font-bold text-rose-100">ویرایش خاطره</h3>
+              </div>
+              <button
+                onClick={() => setEditingMemory(null)}
+                className="p-1 rounded-full text-rose-300 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-rose-300 block mb-1">عنوان خاطره:</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full p-2.5 rounded-xl bg-[#1c082b] border border-rose-500/30 text-xs text-rose-100 placeholder:text-rose-400/40 focus:outline-none focus:border-rose-400"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-rose-300 block mb-1">دسته‌بندی:</label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value as Memory['category'])}
+                className="w-full p-2.5 rounded-xl bg-[#1c082b] border border-rose-500/30 text-xs text-rose-100 focus:outline-none focus:border-rose-400"
+              >
+                <option value="سفر">سفر</option>
+                <option value="اولین دیدار">اولین دیدار</option>
+                <option value="جشن و کادو">جشن و کادو</option>
+                <option value="قرارهای عاشقانه">قرارهای عاشقانه</option>
+                <option value="لحظه‌های خاص">لحظه‌های خاص</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] font-bold text-rose-300 block mb-1">تاریخ ثبت:</label>
+                <input
+                  type="text"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-[#1c082b] border border-rose-500/30 text-xs text-rose-100 focus:outline-none focus:border-rose-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-rose-300 block mb-1">مکان یا شهر:</label>
+                <input
+                  type="text"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-[#1c082b] border border-rose-500/30 text-xs text-rose-100 focus:outline-none focus:border-rose-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-rose-300 block mb-1">شرح خاطره و حس و حال:</label>
+              <textarea
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                rows={2}
+                className="w-full p-2.5 rounded-xl bg-[#1c082b] border border-rose-500/30 text-xs text-rose-100 focus:outline-none focus:border-rose-400"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={handleSaveEdit}
+                disabled={!editTitle.trim()}
+                className="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-rose-600 text-white font-bold text-xs shadow-xl active:scale-95 disabled:opacity-40 transition-all"
+              >
+                ذخیره تغییرات
+              </button>
+              <button
+                onClick={() => setEditingMemory(null)}
+                className="px-4 py-2.5 rounded-2xl bg-white/10 text-rose-200 text-xs font-bold hover:bg-white/15"
+              >
+                انصراف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

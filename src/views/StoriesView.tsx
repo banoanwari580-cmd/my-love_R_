@@ -9,6 +9,8 @@ import {
   Camera,
   Video,
   Calendar,
+  Trash2,
+  Edit3,
 } from 'lucide-react';
 import { store } from '../services/store';
 import { sound } from '../services/sound';
@@ -22,6 +24,8 @@ export const StoriesView: React.FC = () => {
   const [newMediaUrl, setNewMediaUrl] = useState<string | null>(null);
   const [newMediaType, setNewMediaType] = useState<'image' | 'video'>('image');
   const [caption, setCaption] = useState('');
+  const [isEditingCaption, setIsEditingCaption] = useState(false);
+  const [editCaptionText, setEditCaptionText] = useState('');
   const currentUser = store.getCurrentUser();
 
   useEffect(() => {
@@ -184,12 +188,43 @@ export const StoriesView: React.FC = () => {
               </div>
             </div>
 
-            <button
-              onClick={() => setActiveStoryIdx(null)}
-              className="p-2 rounded-full bg-black/40 text-white hover:bg-black/70"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {activeStory.authorId === currentUser.role && (
+                <>
+                  <button
+                    onClick={() => {
+                      setEditCaptionText(activeStory.caption || '');
+                      setIsEditingCaption(true);
+                    }}
+                    title="ویرایش متن استوری"
+                    className="p-2 rounded-full bg-black/40 text-amber-300 hover:bg-black/70 transition-colors"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('آیا از حذف این استوری اطمینان دارید؟')) {
+                        store.deleteStory(activeStory.id);
+                        handleNextStory();
+                      }
+                    }}
+                    title="حذف استوری"
+                    className="p-2 rounded-full bg-black/40 text-red-400 hover:bg-black/70 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => {
+                  setActiveStoryIdx(null);
+                  setIsEditingCaption(false);
+                }}
+                className="p-2 rounded-full bg-black/40 text-white hover:bg-black/70"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Story Media (Image or Video) */}
@@ -217,10 +252,39 @@ export const StoriesView: React.FC = () => {
 
           {/* Bottom Caption & Interactive Reactions */}
           <div className="space-y-3 pb-safe">
-            {activeStory.caption && (
-              <p className="text-xs sm:text-sm text-center text-white/90 bg-black/50 p-3 rounded-2xl backdrop-blur-md">
-                {activeStory.caption}
-              </p>
+            {isEditingCaption ? (
+              <div className="bg-black/80 p-3 rounded-2xl backdrop-blur-md flex items-center gap-2 border border-amber-400/50">
+                <input
+                  type="text"
+                  value={editCaptionText}
+                  onChange={(e) => setEditCaptionText(e.target.value)}
+                  placeholder="متن استوری را ویرایش کنید..."
+                  className="flex-1 bg-transparent text-xs text-white focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    store.updateStory(activeStory.id, editCaptionText);
+                    activeStory.caption = editCaptionText.trim() || undefined;
+                    setIsEditingCaption(false);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-bold text-[10px]"
+                >
+                  ذخیره
+                </button>
+                <button
+                  onClick={() => setIsEditingCaption(false)}
+                  className="px-2 py-1 rounded-lg bg-white/20 text-white text-[10px]"
+                >
+                  انصراف
+                </button>
+              </div>
+            ) : (
+              activeStory.caption && (
+                <p className="text-xs sm:text-sm text-center text-white/90 bg-black/50 p-3 rounded-2xl backdrop-blur-md">
+                  {activeStory.caption}
+                </p>
+              )
             )}
 
             <div className="flex items-center justify-between px-2">

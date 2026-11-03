@@ -9,6 +9,7 @@ import {
   X,
   Award,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { store } from '../services/store';
@@ -245,9 +246,25 @@ export const StagesView: React.FC = () => {
 
             {/* Partner completion notes */}
             <div>
-              <label className="text-[11px] font-bold text-rose-300 block mb-1">
-                یادداشت یا احساس شما از انجام این مرحله:
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-rose-300">
+                  یادداشت یا احساس شما از انجام این مرحله:
+                </label>
+                {selectedStage.partnerNotes && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('آیا از پاک کردن یادداشت این مرحله اطمینان دارید؟')) {
+                        store.deleteStageNotes(selectedStage.id);
+                        setPartnerNote('');
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>حذف یادداشت</span>
+                  </button>
+                )}
+              </div>
               <textarea
                 value={partnerNote}
                 onChange={(e) => setPartnerNote(e.target.value)}

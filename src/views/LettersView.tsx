@@ -9,6 +9,8 @@ import {
   X,
   Sparkles,
   Scroll,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { store } from '../services/store';
@@ -25,6 +27,12 @@ export const LettersView: React.FC = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [paperTheme, setPaperTheme] = useState<LoveLetter['paperTheme']>('gold');
+
+  // Edit State
+  const [editingLetter, setEditingLetter] = useState<LoveLetter | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editPaperTheme, setEditPaperTheme] = useState<LoveLetter['paperTheme']>('gold');
 
   const currentUser = store.getCurrentUser();
 
@@ -50,6 +58,38 @@ export const LettersView: React.FC = () => {
       });
     }
     setActiveLetter(letter);
+  };
+
+  const handleDeleteLetter = (letterId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm('آیا از حذف این نامه عاشقانه اطمینان دارید؟ این عمل غیرقابل بازگشت است.')) return;
+    sound.playTileClick();
+    store.deleteLetter(letterId);
+    if (activeLetter?.id === letterId) setActiveLetter(null);
+    if (editingLetter?.id === letterId) setEditingLetter(null);
+  };
+
+  const handleOpenEdit = (letter: LoveLetter, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    sound.playTileClick();
+    setEditingLetter(letter);
+    setEditTitle(letter.title);
+    setEditContent(letter.content);
+    setEditPaperTheme(letter.paperTheme);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingLetter || !editTitle.trim() || !editContent.trim()) return;
+    store.updateLetter(editingLetter.id, editTitle, editContent, editPaperTheme);
+    if (activeLetter?.id === editingLetter.id) {
+      setActiveLetter({
+        ...activeLetter,
+        title: editTitle.trim(),
+        content: editContent.trim(),
+        paperTheme: editPaperTheme,
+      });
+    }
+    setEditingLetter(null);
   };
 
   const handleSendLetter = () => {
@@ -190,13 +230,33 @@ export const LettersView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0 mr-2">
+                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0 mr-2">
                     <span className="text-[10px] text-rose-400/80 font-mono">
                       {new Date(letter.createdAt).toLocaleDateString('fa-IR')}
                     </span>
-                    {!letter.isSealed && (
-                      <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {!letter.isSealed && (
+                        <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      )}
+                      {letter.senderId === currentUser.role && (
+                        <>
+                          <button
+                            onClick={(e) => handleOpenEdit(letter, e)}
+                            title="ویرایش نامه"
+                            className="p-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/40 text-amber-300 transition-colors"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteLetter(letter.id, e)}
+                            title="حذف نامه"
+                            className="p-1 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -219,12 +279,32 @@ export const LettersView: React.FC = () => {
                 <Heart className="w-5 h-5 text-rose-400 fill-rose-500 animate-pulse" />
                 <span className="text-sm font-bold">{activeLetter.title}</span>
               </div>
-              <button
-                onClick={() => setActiveLetter(null)}
-                className="p-1 rounded-full hover:bg-black/20 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1.5">
+                {activeLetter.senderId === currentUser.role && (
+                  <>
+                    <button
+                      onClick={() => handleOpenEdit(activeLetter)}
+                      title="ویرایش این نامه"
+                      className="p-1.5 rounded-full hover:bg-black/20 text-amber-300 transition-colors"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteLetter(activeLetter.id)}
+                      title="حذف این نامه"
+                      className="p-1.5 rounded-full hover:bg-black/20 text-red-300 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => setActiveLetter(null)}
+                  className="p-1 rounded-full hover:bg-black/20 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Letter Metadata */}
@@ -319,6 +399,86 @@ export const LettersView: React.FC = () => {
               <Send className="w-4 h-4 rotate-180" />
               <span>مهر و موم و ارسال نامه (+۵۰ قلب)</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Letter Modal */}
+      {editingLetter && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="w-full max-w-md bg-[#160626] border border-amber-500/30 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-amber-500/20">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-5 h-5 text-amber-300" />
+                <h3 className="text-sm font-bold text-rose-100">ویرایش نامه سر به مهر</h3>
+              </div>
+              <button
+                onClick={() => setEditingLetter(null)}
+                className="p-1 rounded-full text-rose-300 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-rose-300 block mb-1">عنوان نامه:</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full p-2.5 rounded-xl bg-[#1c082b] border border-rose-500/30 text-xs text-rose-100 placeholder:text-rose-400/40 focus:outline-none focus:border-amber-400"
+              />
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-rose-300 block mb-1">تم کاغذ نامه:</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { id: 'gold', name: 'زرین سلطنتی' },
+                  { id: 'rose', name: 'رز ارغوانی' },
+                  { id: 'parchment', name: 'پاپیروس کهن' },
+                  { id: 'night', name: 'شب ستاره‌باران' },
+                ].map((th) => (
+                  <button
+                    key={th.id}
+                    onClick={() => setEditPaperTheme(th.id as LoveLetter['paperTheme'])}
+                    className={`py-2 px-1 rounded-xl text-[10px] font-bold border transition-all ${
+                      editPaperTheme === th.id
+                        ? 'border-amber-400 bg-rose-900/60 text-amber-300 shadow'
+                        : 'border-rose-500/20 bg-rose-950/20 text-rose-300/70 hover:bg-rose-900/30'
+                    }`}
+                  >
+                    {th.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-rose-300 block mb-1">متن نامه:</label>
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={6}
+                className="w-full p-3 rounded-xl bg-[#1c082b] border border-rose-500/30 text-xs text-rose-100 placeholder:text-rose-400/40 focus:outline-none focus:border-amber-400 leading-relaxed font-serif"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={handleSaveEdit}
+                disabled={!editTitle.trim() || !editContent.trim()}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-rose-600 text-white font-bold text-xs shadow-xl active:scale-95 disabled:opacity-40 transition-all"
+              >
+                ذخیره تغییرات نامه
+              </button>
+              <button
+                onClick={() => setEditingLetter(null)}
+                className="px-4 py-3 rounded-2xl bg-white/10 text-rose-200 text-xs font-bold hover:bg-white/15"
+              >
+                انصراف
+              </button>
+            </div>
           </div>
         </div>
       )}

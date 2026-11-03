@@ -8,6 +8,7 @@ import {
   Check,
   Heart,
   Trash2,
+  Edit3,
   X,
   Play,
   Pause,
@@ -25,6 +26,10 @@ export const ChatView: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showEmojiBar, setShowEmojiBar] = useState(false);
+
+  // Edit Message State
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editingMsgText, setEditingMsgText] = useState('');
 
   // Real Voice Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -277,11 +282,42 @@ export const ChatView: React.FC = () => {
                   </div>
                 )}
 
-                {/* Text Message */}
-                {msg.text && (
-                  <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap select-text">
-                    {msg.text}
-                  </p>
+                {/* Text Message or Inline Edit */}
+                {editingMsgId === msg.id ? (
+                  <div className="space-y-2 mt-1">
+                    <input
+                      type="text"
+                      value={editingMsgText}
+                      onChange={(e) => setEditingMsgText(e.target.value)}
+                      className="w-full p-2 rounded-xl bg-black/40 border border-amber-400 text-xs text-white focus:outline-none"
+                      autoFocus
+                    />
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <button
+                        onClick={() => {
+                          if (editingMsgText.trim()) {
+                            store.updateMessage(msg.id, editingMsgText.trim());
+                          }
+                          setEditingMsgId(null);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-bold text-[10px] hover:bg-amber-400"
+                      >
+                        ذخیره
+                      </button>
+                      <button
+                        onClick={() => setEditingMsgId(null)}
+                        className="px-2.5 py-1 rounded-lg bg-white/20 text-white text-[10px]"
+                      >
+                        انصراف
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  msg.text && (
+                    <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap select-text">
+                      {msg.text}
+                    </p>
+                  )
                 )}
 
                 {/* Time & Read Receipt */}
@@ -310,8 +346,8 @@ export const ChatView: React.FC = () => {
                 )}
               </div>
 
-              {/* Quick Reactions bar */}
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mt-1 px-1">
+              {/* Quick Reactions & Action bar */}
+              <div className="opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 mt-1 px-1">
                 {['❤️', '😘', '💍', '💖'].map((emoji) => (
                   <button
                     key={emoji}
@@ -322,12 +358,31 @@ export const ChatView: React.FC = () => {
                   </button>
                 ))}
                 {isMe && (
-                  <button
-                    onClick={() => store.deleteMessage(msg.id)}
-                    className="text-rose-400/50 hover:text-rose-400 mr-1"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
+                  <>
+                    {msg.text && (
+                      <button
+                        onClick={() => {
+                          setEditingMsgId(msg.id);
+                          setEditingMsgText(msg.text || '');
+                        }}
+                        title="ویرایش پیام"
+                        className="text-amber-300/80 hover:text-amber-300 mr-1 p-0.5"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (window.confirm('آیا این پیام حذف شود؟')) {
+                          store.deleteMessage(msg.id);
+                        }
+                      }}
+                      title="حذف پیام"
+                      className="text-rose-400/60 hover:text-rose-400 mr-0.5 p-0.5"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </>
                 )}
               </div>
             </div>
