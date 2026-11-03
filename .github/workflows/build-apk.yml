@@ -38,10 +38,10 @@ jobs:
         with:
           packages: 'platform-tools'
 
-      - name: Accept Licenses and Install Required SDK Packages
+      - name: Accept Licenses and Install SDK 36
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Verify Environment
         run: |
@@ -59,43 +59,35 @@ jobs:
 
       - name: Verify Web Bundle
         run: |
-          if [ ! -d "dist" ] || [ ! -f "dist/index.html" ]; then
-            echo "ERROR: Web production build failed or dist/index.html is missing"
+          if [ ! -f "dist/index.html" ]; then
+            echo "ERROR: dist/index.html is missing"
             exit 1
           fi
-          echo "Web application build verified successfully"
+          echo "Web build verified"
 
       - name: Synchronize Capacitor Android
         run: npx cap sync android
 
-      - name: Verify Android Project and Gradlew
+      - name: Verify Android Project
         run: |
-          if [ ! -d "android" ]; then
-            echo "ERROR: android directory does not exist"
-            exit 1
-          fi
-
           if [ ! -f "android/gradlew" ]; then
-            echo "ERROR: android/gradlew does not exist"
+            echo "ERROR: android/gradlew is missing"
             exit 1
           fi
-
           chmod +x android/gradlew
-          echo "Android project and gradlew verified successfully"
 
       - name: Build Android Debug APK
         working-directory: android
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Verify Debug APK File Existence
+      - name: Verify APK
         run: |
           APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
-
           if test -s "$APK_PATH"; then
-            echo "SUCCESS: Debug APK generated and verified!"
+            echo "APK generated successfully"
             ls -lh "$APK_PATH"
           else
-            echo "ERROR: APK was not generated or is empty!"
+            echo "ERROR: APK missing or empty"
             exit 1
           fi
 
@@ -113,7 +105,6 @@ jobs:
           echo "### Android APK Build Succeeded!" >> "$GITHUB_STEP_SUMMARY"
           echo "- Package ID: com.mylove.razma" >> "$GITHUB_STEP_SUMMARY"
           echo "- Artifact: My-Love-Razma-APK" >> "$GITHUB_STEP_SUMMARY"
-          echo "- APK: app-debug.apk" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Android SDK: API 35" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Android SDK: API 36" >> "$GITHUB_STEP_SUMMARY"
           echo "- Java: JDK 21" >> "$GITHUB_STEP_SUMMARY"
           echo "- Node: 22" >> "$GITHUB_STEP_SUMMARY"
