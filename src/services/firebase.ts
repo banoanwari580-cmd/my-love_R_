@@ -66,21 +66,75 @@ export async function testLiveFirestoreConnection(): Promise<boolean> {
   }
 }
 
-// Upload Media Helper (Photos, Videos, Audio)
+// Helper to compress image Blob before upload
+async function compressImageBlob(blob: Blob, maxDim = 1280, quality = 0.82): Promise<Blob> {
+  if (!blob.type.startsWith('image/') || blob.type.includes('svg') || blob.type.includes('gif')) {
+    return blob;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (compressed) => resolve(compressed || blob),
+          'image/jpeg',
+          quality
+        );
+      } else {
+        resolve(blob);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(blob);
+    };
+    img.src = url;
+  });
+}
+
+// Upload Media Helper (Photos, Videos, Audio) to Firebase Storage
 export async function uploadMediaToStorage(file: Blob, folder: string, fileName?: string): Promise<string> {
   const name = fileName || `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const path = `${folder}/${name}`;
+
+  let preparedFile = file;
+  if (file.type.startsWith('image/')) {
+    try {
+      preparedFile = await compressImageBlob(file);
+    } catch {
+      preparedFile = file;
+    }
+  }
+
   try {
     const fileRef = storageRef(firebaseStorage, path);
-    const snapshot = await uploadBytes(fileRef, file);
+    const snapshot = await uploadBytes(fileRef, preparedFile);
     return await getDownloadURL(snapshot.ref);
   } catch (err) {
-    console.warn(`Storage upload to ${path} failed or blocked, creating base64 data URL fallback:`, err);
+    console.warn(`Storage upload to ${path} failed or offline:`, err);
+    // If upload to Firebase Storage failed, create a lightweight compressed preview URL
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = reject;
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(preparedFile);
     });
   }
 }

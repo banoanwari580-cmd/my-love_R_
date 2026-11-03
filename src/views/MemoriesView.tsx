@@ -13,12 +13,14 @@ import {
 import { store } from '../services/store';
 import { sound } from '../services/sound';
 import { Memory } from '../types';
+import { uploadMediaToStorage } from '../services/firebase';
 
 export const MemoriesView: React.FC = () => {
   const [memories, setMemories] = useState<Memory[]>(store.getMemories());
   const [selectedCategory, setSelectedCategory] = useState<string>('همه');
   const [activeMemory, setActiveMemory] = useState<Memory | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Edit Memory State
   const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
@@ -49,14 +51,18 @@ export const MemoriesView: React.FC = () => {
     return m.category === selectedCategory;
   });
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setNewImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      try {
+        const url = await uploadMediaToStorage(file, 'memories');
+        setNewImage(url);
+      } catch (err) {
+        console.warn('Memory upload note:', err);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 

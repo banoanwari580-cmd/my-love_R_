@@ -18,6 +18,7 @@ import {
 import { store } from '../services/store';
 import { sound } from '../services/sound';
 import { LoveMessage } from '../types';
+import { uploadMediaToStorage } from '../services/firebase';
 
 export const ChatView: React.FC = () => {
   const [messages, setMessages] = useState<LoveMessage[]>(store.getMessages());
@@ -79,14 +80,14 @@ export const ChatView: React.FC = () => {
         }
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64Audio = reader.result as string;
-          store.sendMessage('', undefined, base64Audio, recordingSeconds);
-        };
-        reader.readAsDataURL(audioBlob);
+        try {
+          const cloudUrl = await uploadMediaToStorage(audioBlob, 'chat', `voice_${Date.now()}.webm`);
+          store.sendMessage('', undefined, cloudUrl, recordingSeconds);
+        } catch (err) {
+          console.warn('Voice upload note:', err);
+        }
 
         // Stop all tracks
         stream.getTracks().forEach((track) => track.stop());
@@ -162,14 +163,15 @@ export const ChatView: React.FC = () => {
     }
   };
 
-  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setSelectedImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const cloudUrl = await uploadMediaToStorage(file, 'chat');
+        setSelectedImage(cloudUrl);
+      } catch (err) {
+        console.warn('Chat image upload note:', err);
+      }
     }
   };
 

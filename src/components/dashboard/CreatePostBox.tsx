@@ -32,10 +32,8 @@ export const CreatePostBox: React.FC = () => {
       try {
         const url = await uploadMediaToStorage(file, 'posts');
         setMediaUrl(url);
-      } catch {
-        const reader = new FileReader();
-        reader.onload = () => setMediaUrl(reader.result as string);
-        reader.readAsDataURL(file);
+      } catch (err) {
+        console.warn('Media upload to Firebase storage note:', err);
       } finally {
         setIsUploading(false);
       }

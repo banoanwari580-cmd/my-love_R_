@@ -15,6 +15,7 @@ import {
 import { store } from '../services/store';
 import { sound } from '../services/sound';
 import { Story } from '../types';
+import { uploadMediaToStorage } from '../services/firebase';
 
 export const StoriesView: React.FC = () => {
   const [stories, setStories] = useState<Story[]>(store.getActiveStories());
@@ -23,6 +24,7 @@ export const StoriesView: React.FC = () => {
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [newMediaUrl, setNewMediaUrl] = useState<string | null>(null);
   const [newMediaType, setNewMediaType] = useState<'image' | 'video'>('image');
+  const [isUploading, setIsUploading] = useState(false);
   const [caption, setCaption] = useState('');
   const [isEditingCaption, setIsEditingCaption] = useState(false);
   const [editCaptionText, setEditCaptionText] = useState('');
@@ -61,17 +63,21 @@ export const StoriesView: React.FC = () => {
     }
   };
 
-  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const isVid = file.type.startsWith('video/');
       setNewMediaType(isVid ? 'video' : 'image');
+      setIsUploading(true);
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        setNewMediaUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const url = await uploadMediaToStorage(file, 'stories');
+        setNewMediaUrl(url);
+      } catch (err) {
+        console.warn('Stories upload note:', err);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 

@@ -66,6 +66,35 @@ const STORAGE_KEYS = {
 
 type StoreListener = () => void;
 
+/**
+ * Strips any heavy Base64 (data:...) payloads from items before saving to localStorage.
+ * Cloud Firestore and in-memory state retain full URLs/content.
+ * This ensures the browser's 5MB localStorage quota is never exceeded.
+ */
+function cleanMediaForLocalCache<T>(items: T[], maxItems = 15): T[] {
+  if (!Array.isArray(items)) return [];
+  return items.slice(0, maxItems).map((item: any) => {
+    if (!item || typeof item !== 'object') return item;
+    const copy = { ...item };
+    if (copy.mediaUrl && typeof copy.mediaUrl === 'string' && copy.mediaUrl.startsWith('data:')) {
+      copy.mediaUrl = '';
+    }
+    if (copy.imageUrl && typeof copy.imageUrl === 'string' && copy.imageUrl.startsWith('data:')) {
+      copy.imageUrl = '';
+    }
+    if (copy.audioUrl && typeof copy.audioUrl === 'string' && copy.audioUrl.startsWith('data:')) {
+      copy.audioUrl = '';
+    }
+    if (copy.authorAvatar && typeof copy.authorAvatar === 'string' && copy.authorAvatar.startsWith('data:')) {
+      copy.authorAvatar = '';
+    }
+    if (copy.avatar && typeof copy.avatar === 'string' && copy.avatar.startsWith('data:')) {
+      copy.avatar = '';
+    }
+    return copy;
+  });
+}
+
 class LoveStore {
   private currentRole: UserRole = 'admin';
   private isAuthenticated: boolean = false;
@@ -87,6 +116,8 @@ class LoveStore {
   private badges: RewardBadge[] = INITIAL_BADGES;
   private listeners: Set<StoreListener> = new Set();
   private unsubs: (() => void)[] = [];
+  private isSyncActive: boolean = false;
+  private saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.loadFromStorage();
@@ -102,12 +133,21 @@ class LoveStore {
     window.addEventListener('online', () => {
       this.isOnline = true;
       this.checkCloudConnection();
+      if (this.isAuthenticated) {
+        this.startFirestoreSync(); // Safe reconnection
+      }
       this.notify();
     });
     window.addEventListener('offline', () => {
       this.isOnline = false;
       this.isFirebaseLive = false;
       this.notify();
+    });
+    window.addEventListener('beforeunload', () => {
+      if (this.saveDebounceTimer) {
+        clearTimeout(this.saveDebounceTimer);
+        this.saveToStorage();
+      }
     });
   }
 
@@ -171,10 +211,24 @@ class LoveStore {
     });
   }
 
-  public startFirestoreSync() {
-    // Clear old listeners
-    this.unsubs.forEach((u) => u());
+  public stopFirestoreSync() {
+    this.unsubs.forEach((u) => {
+      try {
+        u();
+      } catch {
+        // Ignore
+      }
+    });
     this.unsubs = [];
+    this.isSyncActive = false;
+  }
+
+  public startFirestoreSync() {
+    if (!this.isAuthenticated) return;
+
+    // Clear old listeners safely to prevent duplicate subscriptions
+    this.stopFirestoreSync();
+    this.isSyncActive = true;
 
     try {
       // 1. Live Sync Posts
@@ -263,8 +317,46 @@ class LoveStore {
     }
   }
 
+  private safeSetItem(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value);
+    } catch (err: unknown) {
+      const isQuota =
+        err instanceof DOMException &&
+        (err.name === 'QuotaExceededError' ||
+          err.code === 22 ||
+          err.code === 1014 ||
+          err.name === 'NS_ERROR_DOM_QUOTA_REACHED');
+
+      if (isQuota) {
+        console.warn(`[LoveStore] LocalStorage quota limit reached for key '${key}'. Pruning cache to protect storage.`);
+        try {
+          // Remove oversized item from localStorage to free memory
+          localStorage.removeItem(key);
+        } catch {
+          // Ignore
+        }
+      } else {
+        console.warn(`[LoveStore] Could not write key '${key}' to localStorage:`, err);
+      }
+    }
+  }
+
   private loadFromStorage() {
     try {
+      // Purge any legacy oversized items from previous sessions that caused QuotaExceededError
+      for (const key of Object.values(STORAGE_KEYS)) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw && (raw.includes('data:image/') || raw.includes('data:video/') || raw.length > 80000)) {
+            console.warn(`[LoveStore] Purging legacy oversized cached item: ${key}`);
+            localStorage.removeItem(key);
+          }
+        } catch {
+          // Ignore
+        }
+      }
+
       const savedAuth = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       if (savedAuth === 'true') {
         this.isAuthenticated = true;
@@ -385,22 +477,18 @@ class LoveStore {
   }
 
   private saveToStorage() {
-    try {
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, this.isAuthenticated ? 'true' : 'false');
-      localStorage.setItem(STORAGE_KEYS.CURRENT_ROLE, this.currentRole);
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(this.users));
-      localStorage.setItem(STORAGE_KEYS.RELATIONSHIP, JSON.stringify(this.relationship));
-      localStorage.setItem(STORAGE_KEYS.POSTS, JSON.stringify(this.posts));
-      localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(this.messages));
-      localStorage.setItem(STORAGE_KEYS.STORIES, JSON.stringify(this.stories));
-      localStorage.setItem(STORAGE_KEYS.MEMORIES, JSON.stringify(this.memories));
-      localStorage.setItem(STORAGE_KEYS.LETTERS, JSON.stringify(this.letters));
-      localStorage.setItem(STORAGE_KEYS.STAGES, JSON.stringify(this.stages));
-      localStorage.setItem(STORAGE_KEYS.SCORES, JSON.stringify(this.scores));
-      localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
-    } catch (e) {
-      console.warn('Storage save error:', e);
-    }
+    this.safeSetItem(STORAGE_KEYS.AUTH_TOKEN, this.isAuthenticated ? 'true' : 'false');
+    this.safeSetItem(STORAGE_KEYS.CURRENT_ROLE, this.currentRole);
+    this.safeSetItem(STORAGE_KEYS.USERS, JSON.stringify(this.users));
+    this.safeSetItem(STORAGE_KEYS.RELATIONSHIP, JSON.stringify(this.relationship));
+    this.safeSetItem(STORAGE_KEYS.POSTS, JSON.stringify(cleanMediaForLocalCache(this.posts, 15)));
+    this.safeSetItem(STORAGE_KEYS.MESSAGES, JSON.stringify(cleanMediaForLocalCache(this.messages, 25)));
+    this.safeSetItem(STORAGE_KEYS.STORIES, JSON.stringify(cleanMediaForLocalCache(this.stories, 15)));
+    this.safeSetItem(STORAGE_KEYS.MEMORIES, JSON.stringify(cleanMediaForLocalCache(this.memories, 15)));
+    this.safeSetItem(STORAGE_KEYS.LETTERS, JSON.stringify(cleanMediaForLocalCache(this.letters, 15)));
+    this.safeSetItem(STORAGE_KEYS.STAGES, JSON.stringify(this.stages));
+    this.safeSetItem(STORAGE_KEYS.SCORES, JSON.stringify(this.scores));
+    this.safeSetItem(STORAGE_KEYS.BADGES, JSON.stringify(this.badges));
   }
 
   public subscribe(listener: StoreListener) {
@@ -411,8 +499,16 @@ class LoveStore {
   }
 
   private notify() {
-    this.saveToStorage();
+    // 1. Immediately notify React subscribers for reactive UI
     this.listeners.forEach((fn) => fn());
+
+    // 2. Debounce local storage write to prevent repeated oversized writes
+    if (this.saveDebounceTimer) {
+      clearTimeout(this.saveDebounceTimer);
+    }
+    this.saveDebounceTimer = setTimeout(() => {
+      this.saveToStorage();
+    }, 200);
   }
 
   // --- Auth & Session ---
@@ -516,8 +612,7 @@ class LoveStore {
     }
     this.isAuthenticated = false;
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-    this.unsubs.forEach((u) => u());
-    this.unsubs = [];
+    this.stopFirestoreSync();
     this.notify();
   }
 

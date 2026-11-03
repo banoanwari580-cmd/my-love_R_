@@ -10,8 +10,17 @@ service firebase.storage {
     // Helper: Valid authenticated partner check
     function isPartner() {
       return request.auth != null && 
-        (request.auth.token.email in ['admin@myloverazma.com', 'razma@myloverazma.com'] ||
+        (request.auth.token.email in ['hamid@gmail.com', 'razma@gmail.com', 'admin@myloverazma.com', 'razma@myloverazma.com', 'banoanwari580@gmail.com'] ||
          request.auth.uid in ['admin_uid', 'razma_uid']);
+    }
+
+    // Feed Posts: Photos and Videos
+    match /posts/{fileName} {
+      allow read: if isPartner();
+      allow write: if isPartner() 
+        && request.resource.size < 50 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+      allow delete: if isPartner();
     }
 
     // Chat Attachments: Photos and Audio Notes
@@ -47,6 +56,7 @@ service firebase.storage {
       allow write: if isPartner() 
         && request.resource.size < 10 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+      allow delete: if isPartner();
     }
   }
 }
